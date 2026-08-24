@@ -71,28 +71,6 @@ The Notification Hub is responsible for:
 | API Documentation | Swagger / OpenAPI |
 | Server | Uvicorn |
 
-## 4. Project Structure
-
-app/
-├── api/
-│   ├── notification_routes.py
-│   └── preference_routes.py
-├── core/
-│   ├── config.py
-│   └── exceptions.py
-├── database/
-│   └── connection.py
-├── models/
-│   ├── notification.py
-│   └── notification_preference.py
-├── schemas/
-│   ├── notification_schema.py
-│   └── preference_schema.py
-├── services/
-│   ├── notification_service.py
-│   └── preference_service.py
-└── main.py
-
 ### Responsibilities
 
 **api/**  
@@ -421,42 +399,3 @@ The following functionality was tested:
 - Bulk notification operations
 
 The API returned successful HTTP responses during verification.
-
-## 16. Integration with Pod Delta
-
-The Notification Hub acts as the backend notification component for Pod Delta.
-
-The frontend can consume the Notification Hub APIs to:
-
-- Display notifications
-- Display unread notification counts
-- Display notification status
-- Manage user notification preferences
-
-The statistics endpoint can provide notification data to the analytics/dashboard component.
-
-The backend is designed to integrate with the existing Pod Delta frontend and other backend components through REST APIs.
-
-## 17. Current Status
-
-- Notification Hub Backend: Completed
-- API Version: v1
-- Database: SQLite
-- API Documentation: Swagger / OpenAPI
-- Frontend Integration: Ready for integration
-
-## 18. Future Enhancements
-
-Potential future improvements include:
-
-- Production database integration
-- Authentication and authorization
-- Real email/SMS delivery providers
-- Push notification integration
-- Webhook delivery
-- Background notification processing
-- Retry mechanisms
-- Notification delivery queues
-- Database migration management
-- Automated unit and integration testing
-- Production deployment configuration
