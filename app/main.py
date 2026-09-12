@@ -2,18 +2,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
+from app.core.settings import settings
 from app.database.connection import Base, engine
-from app.core.config import settings
 
-# Import models so SQLAlchemy registers them
+# Notification Hub models
 from app.models.notification import Notification
 from app.models.notification_preference import NotificationPreference
 
-# Import routers
+# Analytics Engine model
+from app.models.analytics_metrics import AnalyticsMetric
+
+# Notification Hub routers
 from app.api.notification_routes import router as notification_router
 from app.api.preference_routes import router as preference_router
 
-# Import exception handlers
+# Analytics Engine router
+from app.api.analytics_engine_routes import router as analytics_router
+
+# Notification Hub exception handlers
 from app.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
@@ -23,34 +29,30 @@ from app.core.exceptions import (
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+# Analytics Engine exception handlers
+from app.core.exceptions import (
+    AnalyticsNotFoundException,
+    AnalyticsValidationException,
+    AnalyticsDatabaseException,
+    analytics_not_found_handler,
+    analytics_validation_handler,
+    analytics_database_handler,
+)
 
-# ============================================================
-# DATABASE
-# ============================================================
-
-# Create tables if they do not already exist.
-# Alembic migrations should be used in production.
+# Database
 Base.metadata.create_all(bind=engine)
 
-
-# ============================================================
-# FASTAPI APPLICATION
-# ============================================================
-
+# FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="CyBreach Notification Hub API",
+    description="CyBreach Arena Backend",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
 )
 
-
-# ============================================================
 # CORS
-# ============================================================
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -59,22 +61,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ============================================================
-# TRUSTED HOST
-# ============================================================
-
+# Trusted Host
 if settings.ENVIRONMENT == "production":
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=settings.ALLOWED_HOSTS,
     )
 
-
-# ============================================================
-# EXCEPTION HANDLERS
-# ============================================================
-
+# Notification Hub exception handlers
 app.add_exception_handler(
     StarletteHTTPException,
     http_exception_handler,
@@ -90,11 +84,23 @@ app.add_exception_handler(
     general_exception_handler,
 )
 
+# Analytics Engine exception handlers
+app.add_exception_handler(
+    AnalyticsNotFoundException,
+    analytics_not_found_handler,
+)
 
-# ============================================================
-# API ROUTES
-# ============================================================
+app.add_exception_handler(
+    AnalyticsValidationException,
+    analytics_validation_handler,
+)
 
+app.add_exception_handler(
+    AnalyticsDatabaseException,
+    analytics_database_handler,
+)
+
+# Notification Hub routes
 app.include_router(
     notification_router,
     prefix="/api/v1/notifications",
@@ -107,30 +113,26 @@ app.include_router(
     tags=["Preferences"],
 )
 
+# Analytics Engine routes
+app.include_router(
+    analytics_router,
+)
 
-# ============================================================
-# ROOT HEALTH CHECK
-# ============================================================
-
+# Root health check
 @app.get(
     "/",
     summary="Root Health Check",
-    description="Checks whether the Notification Hub backend is running.",
+    description="Checks whether the CyBreach Arena backend is running.",
 )
 async def home():
     return {
         "application": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "status": "Running",
-        "service": "Notification Hub",
         "database": "Connected",
     }
 
-
-# ============================================================
-# DETAILED HEALTH CHECK
-# ============================================================
-
+# Detailed health check
 @app.get(
     "/api/v1/health",
     summary="Detailed Health Check",
