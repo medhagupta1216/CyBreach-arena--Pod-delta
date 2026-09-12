@@ -28,30 +28,6 @@ The CyBreach Analytics Engine is a backend service that collects, stores, and pr
 - CORS configuration
 - Swagger API documentation
 
-## Project Structure
-
-    CyBreach-AnalyticsEngine/
-    ├── app/
-    │   ├── api/
-    │   │   └── analytics_engine_routes.py
-    │   ├── core/
-    │   │   ├── config.py
-    │   │   ├── exceptions.py
-    │   │   └── settings.py
-    │   ├── database/
-    │   │   └── db_connection.py
-    │   ├── models/
-    │   │   └── analytics_metrics.py
-    │   ├── schemas/
-    │   │   └── analytics_schema.py
-    │   ├── services/
-    │   │   └── analytics_engine_service.py
-    │   └── main.py
-    ├── alembic/
-    ├── alembic.ini
-    ├── requirements.txt
-    └── README.md
-
 ## API Endpoints
 
 ### Analytics CRUD
