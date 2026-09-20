@@ -1,137 +1,188 @@
-# CyBreach Arena – Pod Delta
+# CyBreach Arena – Full Setup Guide
 
-This repository contains the backend service for the CyBreach Arena Pod Delta integration layer. It combines three functional areas in one FastAPI application:
+This repository is a full-stack project built around a FastAPI backend for the Pod Delta system. It contains:
 
-- Notification Hub APIs
-- Analytics Engine APIs
-- Kafka/Redpanda + Redis + WebSocket integration processing
+- Notification APIs
+- Analytics APIs
+- Integration services with Kafka/Redpanda, Redis, and WebSocket feeds
+- A React front-end prototype file set in the project root
+- Docker-based infrastructure for local running
 
-The code is primarily under the `app/` package, and the project is configured to run as a standalone backend service. The repository also contains some root-level front-end prototype artifacts, but the active application code for this pod is the FastAPI backend.
+The main application logic runs from the Python backend under `app/`, while the root-level React files (`App.jsx`, `CyBreachArena.jsx`, `main.jsx`, `App.css`, `index.css`) are frontend prototype artifacts that can be launched in a separate Vite app.
 
-## Current project status
+---
 
-The project is actively wired for the following runtime behavior:
+## 1. What this project includes
 
-- FastAPI app boots in `app/main.py`
-- Notification, preference, analytics, and integration routers are included
-- Startup triggers `start_integration()` which initializes Redis, WebSocket manager, Kafka producer, and Kafka consumer
-- SQLite is the default local database; Postgres and Redis/Kafka services are available through Docker Compose
-- WebSocket tenant feed is available at `/ws/{tenant_id}`
-- Prometheus metrics are exposed at `/metrics`
-- App health endpoints are exposed at `/` and `/api/v1/health`
-- Integration health is exposed at `/api/v1/integration/health`
+### Backend
+- FastAPI application in `app/main.py`
+- Notification routes in `app/api/notification_routes.py`
+- Preference routes in `app/api/preference_routes.py`
+- Analytics routes in `app/api/analytics_engine_routes.py`
+- Integration routes in `app/api/integration_routes.py`
+- WebSocket route in `app/api/websocket_routes.py`
 
-## Repository structure
+### Integration services
+- Kafka / Redpanda consumer and producer logic
+- Redis cache and rate-limiter support
+- WebSocket session handling for tenant updates
+- Prometheus metrics output
 
-```text
-.
-├── app/
-│   ├── api/
-│   │   ├── analytics_engine_routes.py
-│   │   ├── integration_routes.py
-│   │   ├── notification_routes.py
-│   │   ├── preference_routes.py
-│   │   └── websocket_routes.py
-│   ├── core/
-│   ├── database/
-│   ├── events/
-│   ├── integration/
-│   ├── models/
-│   ├── schemas/
-│   ├── services/
-│   └── main.py
-├── alembic/
-├── tests/
-├── .env.example
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-├── README.md
-├── INTEGRATION_RUNBOOK.md
-├── cybreach.db
-├── cyberarena.zip
-├── App.jsx
-├── CyBreachArena.jsx
-├── main.jsx
-├── index.css
-└── App.css
+### Frontend
+- Root-level React files are included as prototype / UI assets
+- These are not the active backend runtime, but they can be run as a Vite React app if needed
+
+---
+
+## 2. Prerequisites
+
+Install the following before running anything:
+
+### Required
+- Python 3.11+
+- Node.js 18+ and npm
+- Docker Desktop / Docker Engine with Compose
+- Git
+
+### Verify installation
+
+Windows PowerShell:
+
+```powershell
+python --version
+node -v
+npm -v
+docker --version
 ```
 
-## Technology stack
+If any are missing, install them first.
 
-- Python 3.11+
-- FastAPI
-- SQLAlchemy 2.x
-- Pydantic 2.x
-- Redis
-- Redpanda / Kafka (via `aiokafka`)
-- SQLite (local default)
-- PostgreSQL (available in Docker Compose)
-- ClickHouse (available in Docker Compose for analytics integrations)
-- Uvicorn
-- pytest
+---
 
-## Core application behavior
+## 3. Clone the project
 
-### 1. Notification Hub
+```bash
+git clone <your-repository-url>
+cd CyBreach-arena--Pod-delta
+```
 
-The notification component exposes APIs under `/api/v1/notifications` and allows:
+If you downloaded the project as a zip, extract it first and open the folder in VS Code.
 
-- Listing notifications with search, filters, pagination, and sorting
-- Fetching notifications by user
-- Fetching unread notifications and unread counts
-- Creating notifications
-- Updating notifications
-- Deleting notifications
-- Bulk mark-as-read and bulk delete operations
-- Notification statistics for dashboards
+---
 
-Preference APIs are available under `/api/v1/preferences` for per-user delivery settings.
+## 4. Create environment files
 
-### 2. Analytics Engine
+From the project root:
 
-The analytics component exposes APIs under `/api/v1/analytics` and supports:
+```powershell
+Copy-Item .env.example .env
+```
 
-- Create, list, and fetch analytics records
-- Filter by tenant, report month, score range, and date range
-- Fetch dashboard summaries
-- Fetch credit-flow, engagement, score, score-trend, and report endpoints
-- Update and delete analytics records
+The `.env` file is used by the backend to configure database, Redis, Kafka, and security settings.
 
-### 3. Integration layer
+Example values are already in `.env.example`.
 
-The integration layer processes consumed Kafka topics and produces outbound events. The runtime is configured to consume events such as:
+---
 
-- `wallet.transaction`
-- `engagement.lifecycle`
-- `engagement.completed`
-- `mod3.score`
-- `achievement.awarded`
-- `leaderboard.updated`
-- `benchmark.computed`
+## 5. Backend setup from scratch
 
-It can publish:
+### 5.1 Create Python virtual environment
 
-- `notification.sent`
-- `analytics.report`
-- `score.displayed`
+```powershell
+python -m venv venv
+```
 
-The integration layer also uses Redis for:
+Activate it:
 
-- rate limiting
-- cached score storage
-- WebSocket session state
+Windows PowerShell:
 
-## API overview
+```powershell
+.\venv\Scripts\Activate.ps1
+```
 
-### Health and monitoring
+Windows Command Prompt:
 
-- `GET /` — root health response
-- `GET /api/v1/health` — app health
-- `GET /api/v1/integration/health` — integration service health
-- `GET /metrics` — Prometheus metrics
+```cmd
+venv\Scripts\activate.bat
+```
 
-### Notification APIs
+Linux / macOS:
+
+```bash
+source venv/bin/activate
+```
+
+### 5.2 Install Python dependencies
+
+```powershell
+pip install --upgrade pip
+pip install -r requirements.txt psycopg2-binary
+```
+
+This installs the FastAPI app dependencies and Postgres support.
+
+### 5.3 Start the supporting services
+
+The backend depends on Redis, Redpanda, Postgres, and optionally ClickHouse.
+
+From the project root:
+
+```powershell
+docker compose up -d redis redpanda redpanda-init postgres clickhouse
+```
+
+This will start:
+
+- Redis: `localhost:6379`
+- Redpanda: `localhost:19092`
+- Postgres: `localhost:5432`
+- ClickHouse: `localhost:8123`
+
+If you want the full stack including the API service container:
+
+```powershell
+docker compose up --build
+```
+
+---
+
+## 6. Run the backend server
+
+Once the infrastructure is running:
+
+```powershell
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+The server will be available at:
+
+- API root: `http://127.0.0.1:8000/`
+- Health check: `http://127.0.0.1:8000/api/v1/health`
+- Integration health: `http://127.0.0.1:8000/api/v1/integration/health`
+- Swagger: `http://127.0.0.1:8000/api/docs`
+- ReDoc: `http://127.0.0.1:8000/api/redoc`
+- OpenAPI: `http://127.0.0.1:8000/api/openapi.json`
+
+---
+
+## 7. Backend API overview
+
+### Health endpoints
+
+- `GET /`
+- `GET /api/v1/health`
+- `GET /api/v1/integration/health`
+- `GET /metrics`
+
+### Notification API
+
+Base path:
+
+```text
+/api/v1/notifications
+```
+
+Available endpoints:
 
 - `GET /api/v1/notifications/`
 - `GET /api/v1/notifications/user/{user_id}`
@@ -146,13 +197,29 @@ The integration layer also uses Redis for:
 - `PATCH /api/v1/notifications/bulk/read`
 - `DELETE /api/v1/notifications/bulk`
 
-### Preference APIs
+### Preference API
+
+Base path:
+
+```text
+/api/v1/preferences
+```
+
+Available endpoints:
 
 - `POST /api/v1/preferences/`
 - `GET /api/v1/preferences/{user_id}`
 - `PUT /api/v1/preferences/{user_id}`
 
-### Analytics APIs
+### Analytics API
+
+Base path:
+
+```text
+/api/v1/analytics
+```
+
+Available endpoints:
 
 - `POST /api/v1/analytics`
 - `GET /api/v1/analytics`
@@ -167,122 +234,279 @@ The integration layer also uses Redis for:
 - `PUT /api/v1/analytics/{id}`
 - `DELETE /api/v1/analytics/{id}`
 
-### Integration APIs
+### Integration API
+
+Base path:
+
+```text
+/api/v1/integration
+```
+
+Available endpoints:
 
 - `GET /api/v1/integration/health`
 - `GET /api/v1/integration/score/{tenant_id}`
 - `GET /api/v1/integration/metrics`
 - `POST /api/v1/integration/analytics/flush/{tenant_id}`
 
-### WebSocket feed
+---
 
-- `ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>`
+## 8. Notification flow and Kafka events
 
-JWT tokens must carry the tenant association, and the tenant in the path must match the token claim.
+This project listens for integration events from Kafka topics like:
 
-## Environment configuration
+- `wallet.transaction`
+- `engagement.lifecycle`
+- `engagement.completed`
+- `mod3.score`
+- `achievement.awarded`
+- `leaderboard.updated`
+- `benchmark.computed`
 
-The app uses environment variables loaded from `.env` via `pydantic-settings`.
+It can publish events such as:
 
-A base template is provided in `.env.example`.
+- `notification.sent`
+- `analytics.report`
+- `score.displayed`
 
-Key variables include:
+This is the main event-driven part of the Pod Delta system.
 
-- `PROJECT_NAME`
-- `VERSION`
-- `ENVIRONMENT`
-- `DATABASE_URL`
-- `POSTGRES_DSN`
-- `REDIS_URL`
-- `KAFKA_BOOTSTRAP_SERVERS`
-- `KAFKA_ENABLE`
-- `SECRET_KEY`
-- `CLICKHOUSE_URL`
-- `RATE_LIMIT_WINDOW_SECONDS`
-- `SCORE_CACHE_TTL_SECONDS`
-- `WS_HEARTBEAT_SECONDS`
+---
 
-## Local development setup
+## 9. Example API calls
 
-### 1. Create environment and install dependencies
+### Get health
 
+```powershell
+curl http://127.0.0.1:8000/api/v1/health
+```
+
+### Create a notification
+
+```powershell
+curl -X POST "http://127.0.0.1:8000/api/v1/notifications/" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"user_id\":1,\"title\":\"Security Alert\",\"message\":\"Suspicious login detected\",\"channel\":\"email\",\"priority\":\"high\"}"
+```
+
+### Get notifications for a user
+
+```powershell
+curl "http://127.0.0.1:8000/api/v1/notifications/user/1"
+```
+
+### Get notification stats
+
+```powershell
+curl "http://127.0.0.1:8000/api/v1/notifications/stats"
+```
+
+### Create preferences
+
+```powershell
+curl -X POST "http://127.0.0.1:8000/api/v1/preferences/" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"user_id\":1,\"email\":true,\"sms\":false,\"push\":true,\"in_app\":true}"
+```
+
+### Get analytics for a tenant
+
+```powershell
+curl "http://127.0.0.1:8000/api/v1/analytics/tenant/tenant-a"
+```
+
+---
+
+## 10. WebSocket setup
+
+The app exposes a tenant-specific WebSocket endpoint:
+
+```text
+ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>
+```
+
+Your JWT token should contain a `tenant_id` claim that matches the URL tenant.
+
+Example:
+
+```text
+ws://127.0.0.1:8000/ws/tenant-a?token=eyJ...
+```
+
+---
+
+## 11. Frontend setup from scratch
+
+The repo has root-level React files but not a full Vite project ready to run out of the box. To run the frontend prototype:
+
+### Option A: Create a new React app in a separate folder
+
+From a terminal outside the backend project folder:
+
+```powershell
+npm create vite@latest cybreach-frontend -- --template react
+cd cybreach-frontend
+npm install
+```
+
+Then copy the following files from this project into the new app's `src/` folder:
+
+- `App.jsx`
+- `App.css`
+- `index.css`
+- `main.jsx`
+
+Then run:
+
+```powershell
+npm run dev -- --host 0.0.0.0
+```
+
+Open the app in the browser at:
+
+```text
+http://localhost:5173
+```
+
+### Option B: Use the current project root as a React app
+
+If you want to run the frontend files directly in the same repo, create a Vite app in the root folder or move the frontend files into a dedicated frontend folder. This repo is primarily a backend service, so the cleaner setup is to keep backend and frontend in separate folders.
+
+---
+
+## 12. Full project run order
+
+If you want to start the entire stack from scratch, follow this order:
+
+### Step 1 – Install tools
+- Install Python
+- Install Node.js + npm
+- Install Docker Desktop
+
+### Step 2 – Clone repo
+```bash
+git clone <repo-url>
+cd CyBreach-arena--Pod-delta
+```
+
+### Step 3 – Backend setup
 ```powershell
 Copy-Item .env.example .env
 python -m venv venv
 .\venv\Scripts\Activate.ps1
+pip install --upgrade pip
 pip install -r requirements.txt psycopg2-binary
 ```
 
-### 2. Start supporting infrastructure
-
+### Step 4 – Start infrastructure
 ```powershell
-docker compose up -d redis redpanda redpanda-init postgres
+docker compose up -d redis redpanda redpanda-init postgres clickhouse
 ```
 
-This starts:
-
-- Redis on `localhost:6379`
-- Redpanda on `localhost:19092`
-- Postgres on `localhost:5432`
-
-### 3. Start the FastAPI app
-
+### Step 5 – Run backend
 ```powershell
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### 4. Open the API docs
-
-- Swagger: `http://127.0.0.1:8000/api/docs`
-- ReDoc: `http://127.0.0.1:8000/api/redoc`
-- OpenAPI: `http://127.0.0.1:8000/api/openapi.json`
-
-## Docker Compose run
-
-The project includes a full runtime stack in `docker-compose.yml`:
-
-```powershell
-docker compose up --build
+### Step 6 – Open Swagger
+```text
+http://127.0.0.1:8000/api/docs
 ```
 
-This includes the API service plus Redis, Redpanda, Redpanda topic initialization, ClickHouse, and Postgres.
+### Step 7 – Optional React frontend
+```powershell
+npm create vite@latest cybreach-frontend -- --template react
+cd cybreach-frontend
+npm install
+npm run dev -- --host 0.0.0.0
+```
 
-## Database
+---
 
-Current local default:
+## 13. Useful commands
 
-- SQLite file: `cybreach.db`
-
-Docker Compose also includes PostgreSQL for a more production-like setup, with `DATABASE_URL` set to the Postgres connection string in the `api` service.
-
-## Testing
-
-The project includes pytest-based tests under `tests/`.
-
-Run the suite with:
+### Backend
 
 ```powershell
+# activate environment
+.\venv\Scripts\Activate.ps1
+
+# run app
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+# run tests
 pytest
 ```
 
-Integration-focused verification is also described in `INTEGRATION_RUNBOOK.md`.
+### Docker
 
-## Notes
+```powershell
+docker compose up -d
 
-- The app is a backend-oriented microservice and is designed to integrate with external producers and consumers through Kafka events.
-- Redis is not only used for cache/rate-limit state; it is also used by the WebSocket manager for tenant session tracking.
-- The root-level React files are present as UI artifacts or prototype assets, but they are not the main runtime for this repository’s backend service.
+docker compose down
 
-## Quick reference
-
-```text
-App root:         http://127.0.0.1:8000/
-Health:           http://127.0.0.1:8000/api/v1/health
-Integration:      http://127.0.0.1:8000/api/v1/integration/health
-Docs:             http://127.0.0.1:8000/api/docs
-Metrics:          http://127.0.0.1:8000/metrics
-WebSocket:        ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>
+docker compose logs -f
 ```
 
-For end-to-end event validation and sample payloads, see `INTEGRATION_RUNBOOK.md`.
+### Frontend
+
+```powershell
+npm install
+npm run dev -- --host 0.0.0.0
+```
+
+---
+
+## 14. Troubleshooting
+
+### Backend does not start
+- Ensure your virtual environment is activated
+- Ensure `pip install -r requirements.txt` completed successfully
+- Ensure Docker services are running
+- Check `.env` has valid values
+
+### Redis connection fails
+- Start Redis with:
+
+```powershell
+docker compose up -d redis
+```
+
+### Kafka / Redpanda fails
+- Start the Redpanda services:
+
+```powershell
+docker compose up -d redpanda redpanda-init
+```
+
+### Frontend does not render
+- Ensure Node.js is installed
+- Run `npm install` in the frontend folder
+- Ensure Vite is running on the expected port (`5173` by default)
+
+---
+
+## 15. Project notes
+
+- This repository is primarily a backend service and integration platform.
+- The frontend files in the root are meant as UI prototypes or reference assets.
+- The real runtime for the service is the FastAPI backend under `app/`.
+- For full end-to-end event testing, refer to `INTEGRATION_RUNBOOK.md`.
+
+---
+
+## 16. Quick reference
+
+```text
+Backend URL:         http://127.0.0.1:8000
+Docs:                http://127.0.0.1:8000/api/docs
+Health:              http://127.0.0.1:8000/api/v1/health
+Integration health:  http://127.0.0.1:8000/api/v1/integration/health
+Frontend dev:        http://localhost:5173
+Redis:               localhost:6379
+Redpanda:            localhost:19092
+Postgres:            localhost:5432
+```
+
+This gives you a complete from-scratch setup for the project, including backend, APIs, notification flow, integration services, and frontend prototype startup.
 
