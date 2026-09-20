@@ -1,678 +1,288 @@
-IMPORTANT NOTES REGARDING THE FRONT-END/Manual 
-
-NOTE – The cyberarena.zip file contains the entire files/folders required to run the .jsx file kindly unzip it. If you’re not able to unzip the file then there are other files along with the main .jsx file, to run that jsx file you have to follow the process below.
-•	.jsx file - file is a JavaScript file that contains JSX (JavaScript XML) syntax, which allows developers to write HTML-like markup directly inside JavaScript code. It is primarily used in React to build user interfaces and define reusable UI components.
-
-1.	The initial file was generated and later on it was edited function by function.
-2.	Vite - Vite is a modern, ultra-fast frontend build tool used to develop, and build web applications like React.
-a.	React itself is a JavaScript library for building user interfaces. However, browsers cannot natively read React code (like JSX or TypeScript) without it being processed first. Vite manages this entire behind-the-scenes engineering process.
-b.	Development Server: It spins up a local testing environment so you can view your React app in a browser while coding.
-c.	Code Transpilation: It converts your modern React syntax, JSX, and CSS into standard JavaScript that any browser can understand.
-
-3.	To run the .JSX file you need to do the following steps (SKIP THIS IF YOU ALREADY HAVE THE ENTIRE FOLDER).
-a.	Create a React Project First using your cmd - 
-i.	cd (<your folder where .jsx file is present>)
-ii.	npm create vite@latest cyberarena -- --template react
-iii.	npm install
-iv.	npm run dev
-v.	Then copy your .jsx file into the /src of /cybersrena
- 
-b.	Use Vs code and any browser to run to code successfully.
-4.	Install node.js if not installed - https://nodejs.org/en/download (REQUIRED TO RUN THE CODE). 
-a.	During installation, make sure "Add to PATH" is checked.
-b.	Verify the installation in VS code – open cmd in vs code & run “node -v” then “npm -v”.
-5.	Then navigate to your Project folder in vs code.
-6.	Then in cmd after react project creation, navigate to the folder where the .jsx file is present in my pc it was present in /bb/cyberarena & run the command “npm run dev”.
- 
-7.	The copy the url & paste it in your browser, you’ll be able to view the interface.
-
-•	If you have the unzipped folder with you then you need to follow the steps from 4 to 7. (installing node.js if not installed, then verify the installation) 
-
-
-
-
-# CyBreach Notification Hub
-
-## 1. Overview
-
-The CyBreach Notification Hub is the backend notification service developed for Pod Delta.
-
-It provides REST APIs for creating, managing, tracking, and analyzing user notifications. It also provides APIs for managing user notification preferences across different communication channels.
-
-The service is built using FastAPI and SQLAlchemy and currently uses SQLite as the development database.
-
-## 2. Objectives
-
-The Notification Hub is responsible for:
-
-- Creating notifications for users
-- Retrieving notifications
-- Retrieving notifications for a specific user
-- Tracking unread notifications
-- Marking notifications as read
-- Updating notification status
-- Updating and deleting notifications
-- Performing bulk notification operations
-- Providing notification statistics for analytics
-- Managing user notification preferences
-- Supporting multiple notification channels
-- Supporting notification priority levels
-- Providing API documentation through Swagger UI
-
-## 3. Technology Stack
-
-| Component | Technology |
-|---|---|
-| Programming Language | Python |
-| Backend Framework | FastAPI |
-| ORM | SQLAlchemy |
-| Validation | Pydantic |
-| Database | SQLite |
-| API Documentation | Swagger / OpenAPI |
-| Server | Uvicorn |
-
-### Responsibilities
-
-**api/**  
-Contains the API routes and endpoints.
-
-**core/**  
-Contains application configuration and exception handling.
-
-**database/**  
-Contains the SQLAlchemy database connection and session management.
-
-**models/**  
-Contains the database models.
-
-**schemas/**  
-Contains Pydantic schemas used for request validation and API responses.
-
-**services/**  
-Contains the business logic for notifications and preferences.
-
-**main.py**  
-Initializes the FastAPI application, middleware, exception handlers, database tables, and API routers.
-
-## 5. Notification Model
-
-Each notification contains:
-
-- Notification ID
-- User ID
-- Title
-- Message
-- Channel
-- Priority
-- Status
-- Read status
-- Creation timestamp
-- Update timestamp
-- Read timestamp
-- Delivery timestamp
-
-### Supported Channels
-
-- Email
-- SMS
-- Push
-- In-app
-- Webhook
-- WhatsApp
-- Telegram
-
-### Supported Priorities
-
-- Low
-- Medium
-- High
-- Urgent
-- Critical
-
-### Supported Statuses
-
-- Pending
-- Sent
-- Delivered
-- Read
-- Failed
-- Cancelled
-
-## 6. Notification APIs
-
-Base path:
-
-/api/v1/notifications
-
-### Create Notification
-
-POST /api/v1/notifications/
-
-Creates a new notification.
-
-Example request:
-
-{
-  "user_id": 1,
-  "title": "Security Alert",
-  "message": "Suspicious login detected",
-  "channel": "email",
-  "priority": "high"
-}
-
-### Get All Notifications
-
-GET /api/v1/notifications/
-
-Supports pagination, user filtering, status filtering, channel filtering, priority filtering, read/unread filtering, search, date filtering, and sorting.
-
-### Get User Notifications
-
-GET /api/v1/notifications/user/{user_id}
-
-Returns notifications belonging to a specific user.
-
-### Get Unread Notifications
-
-GET /api/v1/notifications/unread
-
-Returns unread notifications.
-
-### Get Unread Count
-
-GET /api/v1/notifications/unread/count
-
-Returns the number of unread notifications.
-
-### Get Notification Statistics
-
-GET /api/v1/notifications/stats
-
-Provides notification statistics including total, read, unread, channel, priority, and status information.
-
-This endpoint can be consumed by the analytics/dashboard component.
-
-### Update Notification
-
-PUT /api/v1/notifications/{notification_id}
-
-Updates an existing notification.
-
-### Delete Notification
-
-DELETE /api/v1/notifications/{notification_id}
-
-Deletes a notification.
-
-### Mark Notification as Read
-
-PATCH /api/v1/notifications/{notification_id}/read
-
-Marks a notification as read.
-
-### Update Notification Status
-
-PATCH /api/v1/notifications/{notification_id}/status
-
-Updates the status of a notification.
-
-### Bulk Mark as Read
-
-PATCH /api/v1/notifications/bulk/read
-
-Marks multiple notifications as read in a single request.
-
-Example request:
-
-{
-  "notification_ids": [1, 2, 3],
-  "is_read": true,
-  "status": "read"
-}
-
-### Bulk Delete
-
-DELETE /api/v1/notifications/bulk
-
-Deletes multiple notifications in a single request.
-
-## 7. Notification Preference APIs
-
-Base path:
-
-/api/v1/preferences
-
-User preferences control how and when notifications are delivered.
-
-### Create Preferences
-
-POST /api/v1/preferences/
-
-Creates notification preferences for a user.
-
-### Get Preferences
-
-GET /api/v1/preferences/{user_id}
-
-Returns notification preferences for a specific user.
-
-### Update Preferences
-
-PUT /api/v1/preferences/{user_id}
-
-Updates notification preferences.
-
-## 8. Preference Features
-
-The preference system supports:
-
-- Email notifications
-- SMS notifications
-- In-app notifications
-- Push notifications
-- Webhook notifications
-- WhatsApp notifications
-- Telegram notifications
-- Low-priority notifications
-- Medium-priority notifications
-- High-priority notifications
-- Urgent notifications
-- Critical notifications
-- Quiet hours
-- Digest notifications
-- Notification frequency
-- Global unsubscribe
-
-## 9. API Versioning
-
-The current API version is:
-
-/api/v1
-
-API versioning allows future API versions to be introduced without breaking existing clients.
-
-## 10. Health Checks
-
-### Root Health Check
-
-GET /
-
-Checks whether the Notification Hub backend is running.
-
-### Detailed Health Check
-
-GET /api/v1/health
-
-Returns the current application health status.
-
-Example response:
-
-{
-  "status": "healthy",
-  "application": "CyBreach Notification Hub",
-  "version": "1.0.0",
-  "environment": "development"
-}
-
-## 11. API Documentation
-
-Swagger UI:
-
-http://127.0.0.1:8000/api/docs
-
-OpenAPI specification:
-
-http://127.0.0.1:8000/api/openapi.json
-
-ReDoc:
-
-http://127.0.0.1:8000/api/redoc
-
-## 12. Running the Backend
-
-Create a virtual environment:
-
-python -m venv venv
-
-Activate it:
-
-venv\Scripts\activate
-
-Install dependencies:
-
-pip install -r requirements.txt
-
-Start the server:
-
-uvicorn app.main:app --reload
-
-The backend will be available at:
-
-http://127.0.0.1:8000
-
-Swagger documentation:
-
-http://127.0.0.1:8000/api/docs
-
-## 13. Database
-
-The current development environment uses SQLite.
-
-Database:
-
-cybreach.db
-
-SQLAlchemy is responsible for creating and interacting with the database tables.
-
-The database file should not be committed to the repository.
-
-## 14. Error Handling
-
-The backend includes centralized exception handling for:
-
-- HTTP exceptions
-- Request validation errors
-- Unexpected server errors
-
-Validation errors return structured responses so API clients can understand why a request failed.
-
-## 15. Testing and Verification
-
-The backend was verified using the FastAPI Swagger interface.
-
-The following functionality was tested:
-
-- Health check
-- Notification creation
-- Notification retrieval
-- User notification retrieval
-- Unread notification retrieval
-- Unread notification count
-- Notification statistics
-- Notification update
-- Notification deletion
-- Marking notifications as read
-- Notification status updates
-- User preference creation
-- User preference retrieval
-- User preference updates
-- Bulk notification operations
-
-The API returned successful HTTP responses during verification.
-# CyBreach Analytics Engine
-
-The CyBreach Analytics Engine is a backend service that collects, stores, and provides analytics data for the CyBreach Arena platform.
-
-## Technologies
-
-- Python
+# CyBreach Arena – Pod Delta
+
+This repository contains the backend service for the CyBreach Arena Pod Delta integration layer. It combines three functional areas in one FastAPI application:
+
+- Notification Hub APIs
+- Analytics Engine APIs
+- Kafka/Redpanda + Redis + WebSocket integration processing
+
+The code is primarily under the `app/` package, and the project is configured to run as a standalone backend service. The repository also contains some root-level front-end prototype artifacts, but the active application code for this pod is the FastAPI backend.
+
+## Current project status
+
+The project is actively wired for the following runtime behavior:
+
+- FastAPI app boots in `app/main.py`
+- Notification, preference, analytics, and integration routers are included
+- Startup triggers `start_integration()` which initializes Redis, WebSocket manager, Kafka producer, and Kafka consumer
+- SQLite is the default local database; Postgres and Redis/Kafka services are available through Docker Compose
+- WebSocket tenant feed is available at `/ws/{tenant_id}`
+- Prometheus metrics are exposed at `/metrics`
+- App health endpoints are exposed at `/` and `/api/v1/health`
+- Integration health is exposed at `/api/v1/integration/health`
+
+## Repository structure
+
+```text
+.
+├── app/
+│   ├── api/
+│   │   ├── analytics_engine_routes.py
+│   │   ├── integration_routes.py
+│   │   ├── notification_routes.py
+│   │   ├── preference_routes.py
+│   │   └── websocket_routes.py
+│   ├── core/
+│   ├── database/
+│   ├── events/
+│   ├── integration/
+│   ├── models/
+│   ├── schemas/
+│   ├── services/
+│   └── main.py
+├── alembic/
+├── tests/
+├── .env.example
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+├── README.md
+├── INTEGRATION_RUNBOOK.md
+├── cybreach.db
+├── cyberarena.zip
+├── App.jsx
+├── CyBreachArena.jsx
+├── main.jsx
+├── index.css
+└── App.css
+```
+
+## Technology stack
+
+- Python 3.11+
 - FastAPI
-- SQLAlchemy
-- SQLite
-- Pydantic
-- Pydantic Settings
-- Alembic
+- SQLAlchemy 2.x
+- Pydantic 2.x
+- Redis
+- Redpanda / Kafka (via `aiokafka`)
+- SQLite (local default)
+- PostgreSQL (available in Docker Compose)
+- ClickHouse (available in Docker Compose for analytics integrations)
+- Uvicorn
+- pytest
 
-## Features
+## Core application behavior
 
-- Analytics record creation and management
-- Dashboard analytics
-- Credit flow analysis
-- User engagement analysis
-- Resilience score
-- Resilience score trend
-- Monthly analytics reports
-- Pagination
-- Filtering by tenant, report month, date range, and score
-- Input validation
-- Error handling
-- CORS configuration
-- Swagger API documentation
+### 1. Notification Hub
 
-## API Endpoints
+The notification component exposes APIs under `/api/v1/notifications` and allows:
 
-### Analytics CRUD
+- Listing notifications with search, filters, pagination, and sorting
+- Fetching notifications by user
+- Fetching unread notifications and unread counts
+- Creating notifications
+- Updating notifications
+- Deleting notifications
+- Bulk mark-as-read and bulk delete operations
+- Notification statistics for dashboards
+
+Preference APIs are available under `/api/v1/preferences` for per-user delivery settings.
+
+### 2. Analytics Engine
+
+The analytics component exposes APIs under `/api/v1/analytics` and supports:
+
+- Create, list, and fetch analytics records
+- Filter by tenant, report month, score range, and date range
+- Fetch dashboard summaries
+- Fetch credit-flow, engagement, score, score-trend, and report endpoints
+- Update and delete analytics records
+
+### 3. Integration layer
+
+The integration layer processes consumed Kafka topics and produces outbound events. The runtime is configured to consume events such as:
+
+- `wallet.transaction`
+- `engagement.lifecycle`
+- `engagement.completed`
+- `mod3.score`
+- `achievement.awarded`
+- `leaderboard.updated`
+- `benchmark.computed`
+
+It can publish:
+
+- `notification.sent`
+- `analytics.report`
+- `score.displayed`
+
+The integration layer also uses Redis for:
+
+- rate limiting
+- cached score storage
+- WebSocket session state
+
+## API overview
+
+### Health and monitoring
+
+- `GET /` — root health response
+- `GET /api/v1/health` — app health
+- `GET /api/v1/integration/health` — integration service health
+- `GET /metrics` — Prometheus metrics
+
+### Notification APIs
+
+- `GET /api/v1/notifications/`
+- `GET /api/v1/notifications/user/{user_id}`
+- `GET /api/v1/notifications/unread`
+- `GET /api/v1/notifications/unread/count`
+- `GET /api/v1/notifications/stats`
+- `POST /api/v1/notifications/`
+- `PUT /api/v1/notifications/{notification_id}`
+- `DELETE /api/v1/notifications/{notification_id}`
+- `PATCH /api/v1/notifications/{notification_id}/read`
+- `PATCH /api/v1/notifications/{notification_id}/status`
+- `PATCH /api/v1/notifications/bulk/read`
+- `DELETE /api/v1/notifications/bulk`
+
+### Preference APIs
+
+- `POST /api/v1/preferences/`
+- `GET /api/v1/preferences/{user_id}`
+- `PUT /api/v1/preferences/{user_id}`
+
+### Analytics APIs
 
 - `POST /api/v1/analytics`
 - `GET /api/v1/analytics`
 - `GET /api/v1/analytics/{id}`
 - `GET /api/v1/analytics/tenant/{tenant_id}`
-- `PUT /api/v1/analytics/{id}`
-- `DELETE /api/v1/analytics/{id}`
-
-### Analytics Services
-
 - `GET /api/v1/analytics/dashboard/{tenant_id}`
 - `GET /api/v1/analytics/credit-flow/{tenant_id}`
 - `GET /api/v1/analytics/engagement/{tenant_id}`
 - `GET /api/v1/analytics/score/{tenant_id}`
 - `GET /api/v1/analytics/score-trend/{tenant_id}`
 - `GET /api/v1/analytics/report/{tenant_id}`
+- `PUT /api/v1/analytics/{id}`
+- `DELETE /api/v1/analytics/{id}`
 
-## Analytics Data
+### Integration APIs
 
-Each analytics record contains information such as:
+- `GET /api/v1/integration/health`
+- `GET /api/v1/integration/score/{tenant_id}`
+- `GET /api/v1/integration/metrics`
+- `POST /api/v1/integration/analytics/flush/{tenant_id}`
 
-- Tenant details
-- Resilience score
-- Credit balance and usage
-- Total and active users
-- Total visits
-- Average session duration
-- Average response time
-- Uptime percentage
-- Error count
-- Additional metrics
-- Report month
-- Created and updated timestamps
+### WebSocket feed
 
-## Pagination and Filtering
+- `ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>`
 
-The analytics listing API supports pagination and filtering.
+JWT tokens must carry the tenant association, and the tenant in the path must match the token claim.
 
-Available parameters include:
+## Environment configuration
 
-- `skip`
-- `limit`
-- `tenant_id`
-- `report_month`
-- `start_date`
-- `end_date`
-- `min_score`
-- `max_score`
+The app uses environment variables loaded from `.env` via `pydantic-settings`.
 
-Example:
+A base template is provided in `.env.example`.
 
-    GET /api/v1/analytics?skip=0&limit=10&tenant_id=tenant_123
+Key variables include:
+
+- `PROJECT_NAME`
+- `VERSION`
+- `ENVIRONMENT`
+- `DATABASE_URL`
+- `POSTGRES_DSN`
+- `REDIS_URL`
+- `KAFKA_BOOTSTRAP_SERVERS`
+- `KAFKA_ENABLE`
+- `SECRET_KEY`
+- `CLICKHOUSE_URL`
+- `RATE_LIMIT_WINDOW_SECONDS`
+- `SCORE_CACHE_TTL_SECONDS`
+- `WS_HEARTBEAT_SECONDS`
+
+## Local development setup
+
+### 1. Create environment and install dependencies
+
+```powershell
+Copy-Item .env.example .env
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt psycopg2-binary
+```
+
+### 2. Start supporting infrastructure
+
+```powershell
+docker compose up -d redis redpanda redpanda-init postgres
+```
+
+This starts:
+
+- Redis on `localhost:6379`
+- Redpanda on `localhost:19092`
+- Postgres on `localhost:5432`
+
+### 3. Start the FastAPI app
+
+```powershell
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### 4. Open the API docs
+
+- Swagger: `http://127.0.0.1:8000/api/docs`
+- ReDoc: `http://127.0.0.1:8000/api/redoc`
+- OpenAPI: `http://127.0.0.1:8000/api/openapi.json`
+
+## Docker Compose run
+
+The project includes a full runtime stack in `docker-compose.yml`:
+
+```powershell
+docker compose up --build
+```
+
+This includes the API service plus Redis, Redpanda, Redpanda topic initialization, ClickHouse, and Postgres.
 
 ## Database
 
-The Analytics Engine uses SQLite as the database and SQLAlchemy as the ORM.
+Current local default:
 
-The database connection is configured through the application settings and environment variables.
+- SQLite file: `cybreach.db`
 
-Alembic is included for database migration management.
+Docker Compose also includes PostgreSQL for a more production-like setup, with `DATABASE_URL` set to the Postgres connection string in the `api` service.
 
-## Running the Application
+## Testing
 
-Install the required dependencies:
+The project includes pytest-based tests under `tests/`.
 
-    pip install -r requirements.txt
+Run the suite with:
 
-Start the FastAPI application:
-
-    uvicorn app.main:app --reload
-
-The API will be available at:
-
-    http://127.0.0.1:8000
-
-## API Documentation
-
-Swagger UI:
-
-    http://127.0.0.1:8000/api/docs
-
-ReDoc:
-
-    http://127.0.0.1:8000/api/redoc
-
-## Architecture
-
-The Analytics Engine follows a layered backend architecture:
-
-    Client Request
-          ↓
-    FastAPI Routes
-          ↓
-    Service Layer
-          ↓
-    SQLAlchemy ORM
-          ↓
-    SQLite Database
-          ↓
-    JSON Response
-
-## Error Handling
-
-The application provides structured error responses for validation, missing records, and database-related errors.
-
-Common response codes include:
-
-- `200` – Successful request
-- `201` – Resource created
-- `400` – Bad request
-- `404` – Resource not found
-- `422` – Validation error
-- `500` – Internal server error
-
----
-
-# Integration Layer (Pod Delta – Kafka, Redis, WebSocket)
-
-The integration layer is the event bus glue between other pods and the existing Notification Hub, Analytics Engine, and dashboard WebSocket feed. It does **not** calculate scores, send SMTP/webhooks itself, or run ClickHouse aggregations.
-
-## Owned topics
-
-**Consume:** `wallet.transaction`, `engagement.lifecycle`, `engagement.completed`, `mod3.score`, `achievement.awarded`, `leaderboard.updated`, `benchmark.computed`
-
-**Publish:** `notification.sent`, `analytics.report`, `score.displayed`
-
-Invalid payloads are written to `{topic}.dlt`.
-
-## Sequence diagrams
-
-### 1. Notification flow
-
-```mermaid
-sequenceDiagram
-    participant Pod as Other pod
-    participant Kafka as Kafka/Redpanda
-    participant Delta as Pod Delta consumer
-    participant PG as Postgres (preferences)
-    participant Redis as Redis rate limiter
-    participant Hub as Notification Hub
-    participant WS as WebSocket
-    Pod->>Kafka: domain event
-    Kafka->>Delta: consume + Pydantic validate
-    Delta->>PG: load preferences (tenant scoped)
-    Delta->>Redis: rate_limit:{tenant_id}:{event_type}
-    alt allowed
-        Delta->>Hub: create/send via existing APIs
-        Delta->>WS: in-app push
-        Delta->>Kafka: notification.sent
-    else rate limited
-        Delta->>Kafka: notification.sent (rate_limited)
-    end
-```
-
-### 2. Score display flow
-
-```mermaid
-sequenceDiagram
-    participant M3 as Module 3
-    participant Kafka as Kafka
-    participant Delta as Pod Delta
-    participant Redis as Redis cache
-    participant WS as WebSocket / Frontend
-    M3->>Kafka: mod3.score
-    Kafka->>Delta: consume
-    Delta->>Redis: SET score:{tenant_id} TTL 1h
-    Delta->>WS: score_update
-    Delta->>Kafka: score.displayed
-    WS->>Delta: GET /api/v1/integration/score/{tenant_id}
-    Delta->>Redis: GET score:{tenant_id}
-```
-
-### 3. Analytics flow
-
-```mermaid
-sequenceDiagram
-    participant Kafka as Kafka
-    participant Delta as Pod Delta
-    participant Redis as Event buffer
-    participant AE as Analytics Engine
-    participant CH as ClickHouse (Dev 3)
-    Kafka->>Delta: wallet / engagement / score / ...
-    Delta->>Redis: analytics:buffer:{tenant_id}
-    Note over Delta: every 24h or POST flush
-    Delta->>AE: create/update analytics record
-    AE->>CH: aggregations (owned by Analytics)
-    Delta->>Kafka: analytics.report
-```
-
-## Event schema catalogue
-
-All events share: `event_id`, `event_version` (default `1.0`), `event_type`, `tenant_id`, `correlation_id`, `occurred_at`, `source`.
-
-| Topic | Required extras |
-|---|---|
-| wallet.transaction | transaction_id, amount, direction |
-| engagement.lifecycle | engagement_id, stage |
-| engagement.completed | engagement_id |
-| mod3.score | score (0–100) |
-| achievement.awarded | achievement_id, achievement_name |
-| leaderboard.updated | board_id, rankings |
-| benchmark.computed | benchmark_id |
-| notification.sent | channel, status, triggering_event_* |
-| analytics.report | report_month, report_kind |
-| score.displayed | score, cache_key |
-
-Pydantic models live in `app/events/`.
-
-## Redis key contract
-
-| Key | Purpose | TTL |
-|---|---|---|
-| `rate_limit:{tenant_id}:{event_type}` | Sliding window | 60s |
-| `score:{tenant_id}` | Cached Module 3 score | 1h |
-| `ws_session:{tenant_id}` | WebSocket sessions | heartbeat TTL |
-
-Pub/sub channel: `ws:tenant:{tenant_id}`.
-
-## Local run (Docker Compose)
-
-```bash
-cp .env.example .env
-docker compose up -d redis redpanda redpanda-init
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-- API docs: http://127.0.0.1:8000/api/docs
-- Integration health: http://127.0.0.1:8000/api/v1/integration/health
-- Prometheus: http://127.0.0.1:8000/metrics
-- WebSocket: `ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>`
-
-JWT must include `tenant_id` (and typically `sub`). Sign with `SECRET_KEY`.
-
-See **INTEGRATION_RUNBOOK.md** for end-to-end verification of the three flows.
-
-## Tests
-
-```bash
+```powershell
 pytest
 ```
+
+Integration-focused verification is also described in `INTEGRATION_RUNBOOK.md`.
+
+## Notes
+
+- The app is a backend-oriented microservice and is designed to integrate with external producers and consumers through Kafka events.
+- Redis is not only used for cache/rate-limit state; it is also used by the WebSocket manager for tenant session tracking.
+- The root-level React files are present as UI artifacts or prototype assets, but they are not the main runtime for this repository’s backend service.
+
+## Quick reference
+
+```text
+App root:         http://127.0.0.1:8000/
+Health:           http://127.0.0.1:8000/api/v1/health
+Integration:      http://127.0.0.1:8000/api/v1/integration/health
+Docs:             http://127.0.0.1:8000/api/docs
+Metrics:          http://127.0.0.1:8000/metrics
+WebSocket:        ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>
+```
+
+For end-to-end event validation and sample payloads, see `INTEGRATION_RUNBOOK.md`.
 
