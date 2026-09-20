@@ -6,7 +6,6 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import Response
 
 from app.core.logging import configure_logging, get_logger
-from app.core.redis import close_redis
 from app.core.settings import settings
 from app.database.connection import Base, engine
 from app.database.db_connection import Base as AnalyticsBase
@@ -20,9 +19,9 @@ from app.api.notification_routes import router as notification_router
 from app.api.preference_routes import router as preference_router
 from app.api.analytics_engine_routes import router as analytics_router
 from app.api.integration_routes import router as integration_router
-from app.services.integration.websocket.endpoint import router as websocket_router
+from app.api.websocket_routes import router as websocket_router
 from app.services.integration.metrics import metrics_output
-from app.services.integration.runtime import start_integration, stop_integration
+from app.integration.runtime import start_integration, stop_integration
 
 from app.core.exceptions import (
     http_exception_handler,
@@ -55,7 +54,6 @@ async def lifespan(app: FastAPI):
     await start_integration()
     yield
     await stop_integration()
-    await close_redis()
     logger.info("shutdown")
 
 

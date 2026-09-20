@@ -1,20 +1,25 @@
-"""Integration REST helpers: cached score, on-demand analytics flush, health."""
+"""Integration REST helpers: cached score and health."""
+
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 
-from app.core.redis import get_redis, ping_redis
 from app.core.security import AuthenticatedPrincipal, get_current_principal
+from app.integration.redis_client import get_redis
+from app.integration.runtime import get_consumer, get_producer, get_websocket_manager
 from app.services.integration.metrics import metrics_output
-from app.services.integration.runtime import get_consumer, get_producer, get_ws_manager
-from app.services.integration.score_cache import ScoreCache
 
 router = APIRouter(prefix="/api/v1/integration", tags=["Integration"])
 
 
 @router.get("/health")
 async def integration_health() -> dict:
-    redis_ok = await ping_redis()
+    redis_ok = False
+    try:
+        redis_ok = bool(await (await get_redis()).ping())
+    except Exception:
+        redis_ok = False
     kafka_producer = False
     kafka_consumer = False
     ws_connections = 0
@@ -27,7 +32,7 @@ async def integration_health() -> dict:
     except RuntimeError:
         pass
     try:
-        ws_connections = get_ws_manager().local_connection_count()
+        ws_connections = get_websocket_manager().local_connection_count()
     except RuntimeError:
         pass
 
@@ -55,7 +60,8 @@ async def get_cached_score(
             detail="Tenant scope mismatch",
         )
     redis = await get_redis()
-    cached = await ScoreCache(redis).get(tenant_id)
+    raw = await redis.get(f"score:{tenant_id}")
+    cached = json.loads(raw) if raw else None
     if cached is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -74,16 +80,10 @@ async def flush_analytics(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tenant scope mismatch",
         )
-    from app.services.integration.analytics_pipeline import AnalyticsPipeline
-
-    pipeline = AnalyticsPipeline(get_producer())
-    report = await pipeline.flush_tenant(tenant_id, report_kind="on_demand")
-    if report is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Analytics flush failed",
-        )
-    return report.model_dump(mode="json")
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Analytics reports are emitted from consumed integration events",
+    )
 
 
 @router.get("/metrics")

@@ -1,173 +1,93 @@
-# Integration Runbook (Pod Delta – Dev 4)
+# Integration Runbook
 
-This runbook is for a new developer bringing up Kafka/Redpanda consumption, Redis coordination, and the live WebSocket server, then proving the three architecture flows.
+## Start
 
-## 1. Prerequisites
-
-- Python 3.11+
-- Docker Desktop (Redpanda + Redis)
-- Optional: `kcat` / Redpanda `rpk` for producing test events
-
-## 2. Start infrastructure
-
-```bash
-cp .env.example .env
-docker compose up -d redis redpanda redpanda-init
-```
-
-Confirm:
-
-```bash
-docker compose ps
-```
-
-Redpanda is advertised at `localhost:19092`. Redis is `localhost:6379`.
-
-Topics created by `redpanda-init` include every consume/publish topic plus `{topic}.dlt`.
-
-## 3. Start the API (consumer + WebSocket)
-
-```bash
+```powershell
+Copy-Item .env.example .env
+docker compose up -d redis redpanda redpanda-init postgres
 python -m venv venv
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-# source venv/bin/activate
-
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt psycopg2-binary
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-On startup the process:
+Full Docker stack:
 
-1. Connects to Redis
-2. Starts the WebSocket manager (Redis pub/sub fan-out)
-3. Starts the Kafka producer (`acks=all`)
-4. Starts the consumer group `pod-delta-integration`
-5. Schedules a 24h analytics flush loop
+```powershell
+docker compose up --build
+```
 
-### Health
+## Verify Health
 
-```bash
-curl http://127.0.0.1:8000/api/v1/health
+```powershell
 curl http://127.0.0.1:8000/api/v1/integration/health
-curl http://127.0.0.1:8000/metrics
 ```
 
-Healthy Redis + Kafka shows `"kafka_producer": true` and `"kafka_consumer": true`. If Kafka is down the API still serves Notification/Analytics REST; integration is `degraded`.
-
-## 4. Mint a tenant JWT
-
-The WebSocket and cached-score endpoints reuse `app.core.security`. Example:
-
-```bash
-python -c "from jose import jwt; from app.core.settings import settings; print(jwt.encode({'sub':'42','tenant_id':'tenant-demo'}, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM))"
-```
-
-Store the token as `TOKEN`.
-
-## 5. Verify Flow A – Notifications
-
-Open a WebSocket (in-app channel):
-
-```bash
-# Example with websocat
-websocat "ws://127.0.0.1:8000/ws/tenant-demo?token=$TOKEN"
-```
-
-Produce a wallet event (Docker Redpanda):
-
-```bash
-docker compose exec redpanda rpk topic produce wallet.transaction --brokers redpanda:9092
-```
-
-Paste one line of JSON, then Ctrl-D:
-
-```json
-{"event_id":"wallet-1","event_version":"1.0","event_type":"wallet.transaction","tenant_id":"tenant-demo","correlation_id":"corr-1","occurred_at":"2026-09-18T10:00:00Z","source":"pod-alpha","transaction_id":"txn-1","amount":100,"currency":"USD","direction":"credit","user_id":42}
-```
-
-Expect:
-
-1. Notification Hub row created (`GET /api/v1/notifications/user/42`)
-2. WebSocket message `{ "type": "notification", ... }`
-3. Kafka topic `notification.sent` contains a validated payload
-4. Repeating the same `event_id` is a no-op (Redis idempotency)
-5. Bursting more than `RATE_LIMIT_MAX_EVENTS` in 60s emits `notification.sent` with `rate_limited: true` and Redis key `rate_limit:tenant-demo:wallet.transaction`
-
-Also try `achievement.awarded`, `engagement.lifecycle`, and `engagement.completed`.
-
-## 6. Verify Flow B – Score display
+## Verify Score Display Flow
 
 Produce:
 
+```powershell
+docker compose exec redpanda rpk topic produce mod3.score --brokers redpanda:9092
+```
+
+Message:
+
 ```json
-{"event_id":"score-1","event_type":"mod3.score","tenant_id":"tenant-demo","correlation_id":"corr-score","occurred_at":"2026-09-18T10:05:00Z","source":"module-3","score":81.5,"previous_score":77.0,"trend":"up","components":{"identity":80,"detection":83}}
+{"event_type":"mod3.score","event_id":"score-1","tenant_id":"tenant-a","timestamp":"2026-09-20T00:00:00Z","data":{"score":82.5,"previous_score":80.0,"trend":"up","components":{"training":40,"response":42.5}}}
 ```
 
-on topic `mod3.score`.
+Check Redis and published event:
 
-Expect:
-
-1. Redis `GET score:tenant-demo` returns the full payload (TTL 3600)
-2. WebSocket `{ "type": "score_update", "score": 81.5, ... }`
-3. Topic `score.displayed` published (`push_delivered` true if a socket was connected)
-4. Drill-down:
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/api/v1/integration/score/tenant-demo
+```powershell
+docker compose exec redis redis-cli GET score:tenant-a
+docker compose exec redpanda rpk topic consume score.displayed --brokers redpanda:9092 --num 1
 ```
 
-Tenant mismatch returns 403.
+## Verify Notification Flow
 
-## 7. Verify Flow C – Analytics
+Produce:
 
-Consumed events are buffered at `analytics:buffer:{tenant_id}`. Flush on demand (does not run ClickHouse queries; it hands off to the existing Analytics Engine):
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/api/v1/integration/analytics/flush/tenant-demo
+```powershell
+docker compose exec redpanda rpk topic produce achievement.awarded --brokers redpanda:9092
 ```
 
-Expect `analytics.report` on Kafka and a record via `GET /api/v1/analytics/tenant/tenant-demo` (or dashboard routes).
+Message:
 
-The scheduled path uses `ANALYTICS_FLUSH_INTERVAL_SECONDS` (default 86400).
-
-## 8. Leaderboard / benchmark live updates
-
-Produce `leaderboard.updated` or `benchmark.computed` with `tenant_id: tenant-demo`. The WebSocket client should receive `leaderboard_updated` / `benchmark_computed`. No Notification Hub send unless you extend handlers.
-
-## 9. Dead letters
-
-Send invalid JSON (missing `tenant_id` or `score: 200`). Consumer commits the offset and publishes to `mod3.score.dlt` (or the matching `{topic}.dlt`). Check Prometheus `pod_delta_events_dlt_total`.
-
-## 10. Multi-instance WebSocket
-
-Run a second uvicorn on port 8001 with the same `REDIS_URL`. Connect a client to instance A, publish a score from Kafka. Instance B publishes on `ws:tenant:{tenant_id}`; instance A delivers locally. Session hash lives in `ws_session:{tenant_id}`.
-
-## 11. Tests (no Docker required)
-
-```bash
-pytest -q
+```json
+{"event_type":"achievement.awarded","event_id":"ach-1","tenant_id":"tenant-a","timestamp":"2026-09-20T00:00:00Z","data":{"achievement_id":"first-defense","achievement_name":"First Defense","user_id":1,"points":50}}
 ```
 
-Unit coverage: event contracts, sliding-window limiter, score cache, score flow, WebSocket fan-out. Integration-style tests mock Kafka and use FakeRedis for consumer dispatch, DLT, and idempotency.
+Check Notification Hub and published event:
 
-## 12. Configuration map
+```powershell
+curl "http://127.0.0.1:8000/api/v1/notifications/?user_id=1"
+docker compose exec redpanda rpk topic consume notification.sent --brokers redpanda:9092 --num 1
+```
 
-| Variable | Meaning |
-|---|---|
-| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:19092` from compose |
-| `KAFKA_CONSUMER_GROUP` | `pod-delta-integration` |
-| `KAFKA_ENABLE` | Set `false` to skip broker connections |
-| `REDIS_URL` | Rate limit, score cache, WS |
-| `DATABASE_URL` / `POSTGRES_DSN` | Preferences + delivery logs |
-| `CLICKHOUSE_URL` | Documented for the platform; aggregations stay with Analytics |
-| `SECRET_KEY` | JWT for `/ws/{tenant_id}` |
+## Verify Analytics Flow
 
-## 13. What this service does not do
+Produce:
 
-- React dashboard components
-- SMTP / SendGrid / customer webhook HTTP delivery internals
-- ClickHouse SQL
-- Resilience score math
-- Wallet ledger, security tests, leaderboard ranking
+```powershell
+docker compose exec redpanda rpk topic produce wallet.transaction --brokers redpanda:9092
+```
+
+Message:
+
+```json
+{"event_type":"wallet.transaction","event_id":"wallet-1","tenant_id":"tenant-a","timestamp":"2026-09-20T00:00:00Z","data":{"transaction_id":"txn-1","amount":10.0,"currency":"USD","direction":"credit","status":"completed","user_id":1}}
+```
+
+Check Analytics Engine and published event:
+
+```powershell
+curl "http://127.0.0.1:8000/api/v1/analytics?tenant_id=tenant-a"
+docker compose exec redpanda rpk topic consume analytics.report --brokers redpanda:9092 --num 1
+```
+
+## Tests
+
+```powershell
+pytest tests/integration/test_app_integration_layer.py
+```
