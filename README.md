@@ -62,7 +62,7 @@ If any are missing, install them first.
 ## 3. Clone the project
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/medhagupta1216/CyBreach-arena--Pod-delta.git
 cd CyBreach-arena--Pod-delta
 ```
 
@@ -385,7 +385,7 @@ If you want to start the entire stack from scratch, follow this order:
 
 ### Step 2 – Clone repo
 ```bash
-git clone <repo-url>
+git clone https://github.com/medhagupta1216/CyBreach-arena--Pod-delta.git
 cd CyBreach-arena--Pod-delta
 ```
 
