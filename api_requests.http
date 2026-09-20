@@ -1,0 +1,251 @@
+### Pod Delta - CyBreach Arena API
+### Requires the "REST Client" extension by Huachao Mao (VS Code Marketplace)
+### Usage: click "Send Request" above any request below. Set your variables first.
+
+@base_url = http://127.0.0.1:8000
+@jwt_token = PASTE_YOUR_TOKEN_HERE
+@user_id = 1
+@tenant_id = tenant_123
+@notification_id = 1
+@analytics_id = 1
+
+
+##############################
+# HEALTH
+##############################
+
+### Root Health Check
+GET {{base_url}}/
+
+### Detailed Health Check
+GET {{base_url}}/api/v1/health
+
+### Integration Health
+GET {{base_url}}/api/v1/integration/health
+
+
+##############################
+# NOTIFICATIONS
+##############################
+
+### Create Notification
+POST {{base_url}}/api/v1/notifications/
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "user_id": {{user_id}},
+  "title": "Security Alert",
+  "message": "Suspicious login detected",
+  "channel": "email",
+  "priority": "high"
+}
+
+### Create Notification - Invalid Channel (negative)
+POST {{base_url}}/api/v1/notifications/
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "user_id": {{user_id}},
+  "title": "Bad Channel",
+  "message": "test",
+  "channel": "carrier_pigeon",
+  "priority": "high"
+}
+
+### Get All Notifications
+GET {{base_url}}/api/v1/notifications/
+Authorization: Bearer {{jwt_token}}
+
+### Get All - Filtered
+GET {{base_url}}/api/v1/notifications/?status=pending&channel=email&priority=high&is_read=false
+Authorization: Bearer {{jwt_token}}
+
+### Get User Notifications
+GET {{base_url}}/api/v1/notifications/user/{{user_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Get Unread Notifications
+GET {{base_url}}/api/v1/notifications/unread
+Authorization: Bearer {{jwt_token}}
+
+### Get Unread Count
+GET {{base_url}}/api/v1/notifications/unread/count
+Authorization: Bearer {{jwt_token}}
+
+### Get Notification Stats
+GET {{base_url}}/api/v1/notifications/stats
+Authorization: Bearer {{jwt_token}}
+
+### Update Notification
+PUT {{base_url}}/api/v1/notifications/{{notification_id}}
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "title": "Updated title"
+}
+
+### Mark as Read
+PATCH {{base_url}}/api/v1/notifications/{{notification_id}}/read
+Authorization: Bearer {{jwt_token}}
+
+### Update Status
+PATCH {{base_url}}/api/v1/notifications/{{notification_id}}/status
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "status": "delivered"
+}
+
+### Bulk Mark as Read
+PATCH {{base_url}}/api/v1/notifications/bulk/read
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "notification_ids": [1, 2, 3],
+  "is_read": true,
+  "status": "read"
+}
+
+### Bulk Delete
+DELETE {{base_url}}/api/v1/notifications/bulk
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "notification_ids": [1, 2, 3]
+}
+
+### Delete Notification
+DELETE {{base_url}}/api/v1/notifications/{{notification_id}}
+Authorization: Bearer {{jwt_token}}
+
+
+##############################
+# PREFERENCES
+##############################
+
+### Create Preferences
+POST {{base_url}}/api/v1/preferences/
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "user_id": {{user_id}},
+  "email": true,
+  "sms": false,
+  "in_app": true,
+  "push": true,
+  "webhook": false,
+  "quiet_hours_enabled": false,
+  "digest_enabled": false
+}
+
+### Get Preferences
+GET {{base_url}}/api/v1/preferences/{{user_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Update Preferences
+PUT {{base_url}}/api/v1/preferences/{{user_id}}
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "email": false
+}
+
+
+##############################
+# ANALYTICS
+##############################
+
+### Create Analytics Record
+POST {{base_url}}/api/v1/analytics
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "tenant_id": "{{tenant_id}}",
+  "resilience_score": 78,
+  "report_month": "2026-09"
+}
+
+### Get Analytics by ID
+GET {{base_url}}/api/v1/analytics/{{analytics_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Get Analytics by Tenant
+GET {{base_url}}/api/v1/analytics/tenant/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### List with Pagination/Filters
+GET {{base_url}}/api/v1/analytics?skip=0&limit=10&tenant_id={{tenant_id}}&min_score=0&max_score=100
+Authorization: Bearer {{jwt_token}}
+
+### Update Analytics Record
+PUT {{base_url}}/api/v1/analytics/{{analytics_id}}
+Authorization: Bearer {{jwt_token}}
+Content-Type: application/json
+
+{
+  "resilience_score": 82
+}
+
+### Delete Analytics Record
+DELETE {{base_url}}/api/v1/analytics/{{analytics_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Dashboard
+GET {{base_url}}/api/v1/analytics/dashboard/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Credit Flow
+GET {{base_url}}/api/v1/analytics/credit-flow/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Engagement
+GET {{base_url}}/api/v1/analytics/engagement/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Score
+GET {{base_url}}/api/v1/analytics/score/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Score Trend
+GET {{base_url}}/api/v1/analytics/score-trend/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Monthly Report
+GET {{base_url}}/api/v1/analytics/report/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+
+##############################
+# INTEGRATION
+##############################
+
+### Integration Health
+GET {{base_url}}/api/v1/integration/health
+
+### Get Cached Score
+GET {{base_url}}/api/v1/integration/score/{{tenant_id}}
+Authorization: Bearer {{jwt_token}}
+
+### Prometheus Metrics
+GET {{base_url}}/metrics
+
+
+##############################
+# SECURITY - NEGATIVE CASES
+##############################
+
+### No Auth Header (should 401)
+GET {{base_url}}/api/v1/notifications/
+
+### Cross-Tenant Access Attempt (should 403/404, never return data)
+GET {{base_url}}/api/v1/analytics/tenant/tenant_someone_elses
+Authorization: Bearer {{jwt_token}}
