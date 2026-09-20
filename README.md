@@ -545,3 +545,134 @@ Common response codes include:
 - `404` – Resource not found
 - `422` – Validation error
 - `500` – Internal server error
+
+---
+
+# Integration Layer (Pod Delta – Kafka, Redis, WebSocket)
+
+The integration layer is the event bus glue between other pods and the existing Notification Hub, Analytics Engine, and dashboard WebSocket feed. It does **not** calculate scores, send SMTP/webhooks itself, or run ClickHouse aggregations.
+
+## Owned topics
+
+**Consume:** `wallet.transaction`, `engagement.lifecycle`, `engagement.completed`, `mod3.score`, `achievement.awarded`, `leaderboard.updated`, `benchmark.computed`
+
+**Publish:** `notification.sent`, `analytics.report`, `score.displayed`
+
+Invalid payloads are written to `{topic}.dlt`.
+
+## Sequence diagrams
+
+### 1. Notification flow
+
+```mermaid
+sequenceDiagram
+    participant Pod as Other pod
+    participant Kafka as Kafka/Redpanda
+    participant Delta as Pod Delta consumer
+    participant PG as Postgres (preferences)
+    participant Redis as Redis rate limiter
+    participant Hub as Notification Hub
+    participant WS as WebSocket
+    Pod->>Kafka: domain event
+    Kafka->>Delta: consume + Pydantic validate
+    Delta->>PG: load preferences (tenant scoped)
+    Delta->>Redis: rate_limit:{tenant_id}:{event_type}
+    alt allowed
+        Delta->>Hub: create/send via existing APIs
+        Delta->>WS: in-app push
+        Delta->>Kafka: notification.sent
+    else rate limited
+        Delta->>Kafka: notification.sent (rate_limited)
+    end
+```
+
+### 2. Score display flow
+
+```mermaid
+sequenceDiagram
+    participant M3 as Module 3
+    participant Kafka as Kafka
+    participant Delta as Pod Delta
+    participant Redis as Redis cache
+    participant WS as WebSocket / Frontend
+    M3->>Kafka: mod3.score
+    Kafka->>Delta: consume
+    Delta->>Redis: SET score:{tenant_id} TTL 1h
+    Delta->>WS: score_update
+    Delta->>Kafka: score.displayed
+    WS->>Delta: GET /api/v1/integration/score/{tenant_id}
+    Delta->>Redis: GET score:{tenant_id}
+```
+
+### 3. Analytics flow
+
+```mermaid
+sequenceDiagram
+    participant Kafka as Kafka
+    participant Delta as Pod Delta
+    participant Redis as Event buffer
+    participant AE as Analytics Engine
+    participant CH as ClickHouse (Dev 3)
+    Kafka->>Delta: wallet / engagement / score / ...
+    Delta->>Redis: analytics:buffer:{tenant_id}
+    Note over Delta: every 24h or POST flush
+    Delta->>AE: create/update analytics record
+    AE->>CH: aggregations (owned by Analytics)
+    Delta->>Kafka: analytics.report
+```
+
+## Event schema catalogue
+
+All events share: `event_id`, `event_version` (default `1.0`), `event_type`, `tenant_id`, `correlation_id`, `occurred_at`, `source`.
+
+| Topic | Required extras |
+|---|---|
+| wallet.transaction | transaction_id, amount, direction |
+| engagement.lifecycle | engagement_id, stage |
+| engagement.completed | engagement_id |
+| mod3.score | score (0–100) |
+| achievement.awarded | achievement_id, achievement_name |
+| leaderboard.updated | board_id, rankings |
+| benchmark.computed | benchmark_id |
+| notification.sent | channel, status, triggering_event_* |
+| analytics.report | report_month, report_kind |
+| score.displayed | score, cache_key |
+
+Pydantic models live in `app/events/`.
+
+## Redis key contract
+
+| Key | Purpose | TTL |
+|---|---|---|
+| `rate_limit:{tenant_id}:{event_type}` | Sliding window | 60s |
+| `score:{tenant_id}` | Cached Module 3 score | 1h |
+| `ws_session:{tenant_id}` | WebSocket sessions | heartbeat TTL |
+
+Pub/sub channel: `ws:tenant:{tenant_id}`.
+
+## Local run (Docker Compose)
+
+```bash
+cp .env.example .env
+docker compose up -d redis redpanda redpanda-init
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+- API docs: http://127.0.0.1:8000/api/docs
+- Integration health: http://127.0.0.1:8000/api/v1/integration/health
+- Prometheus: http://127.0.0.1:8000/metrics
+- WebSocket: `ws://127.0.0.1:8000/ws/{tenant_id}?token=<JWT>`
+
+JWT must include `tenant_id` (and typically `sub`). Sign with `SECRET_KEY`.
+
+See **INTEGRATION_RUNBOOK.md** for end-to-end verification of the three flows.
+
+## Tests
+
+```bash
+pytest
+```
+
