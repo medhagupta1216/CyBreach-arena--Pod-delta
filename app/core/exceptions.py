@@ -2,7 +2,7 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
+from fastapi.encoders import jsonable_encoder
 
 async def http_exception_handler(
     request: Request,
@@ -31,7 +31,7 @@ async def validation_exception_handler(
             "error": {
                 "type": "ValidationError",
                 "message": "Request validation failed",
-                "details": exc.errors()
+                "details": jsonable_encoder(exc.errors())
             }
         }
     )

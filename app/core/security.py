@@ -25,7 +25,10 @@ class AuthenticatedPrincipal:
 
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
-        options: dict[str, Any] = {"verify_aud": bool(settings.JWT_AUDIENCE)}
+        options: dict[str, Any] = {
+            "verify_aud": bool(settings.JWT_AUDIENCE),
+            "require_exp": True,
+        }        
         return jwt.decode(
             token,
             settings.SECRET_KEY,
@@ -47,7 +50,7 @@ def principal_from_claims(payload: dict[str, Any]) -> AuthenticatedPrincipal:
         payload.get("tenant_id")
         or payload.get("tid")
         or payload.get("org_id")
-        or subject
+        or ""
     )
     if not tenant_id:
         raise HTTPException(

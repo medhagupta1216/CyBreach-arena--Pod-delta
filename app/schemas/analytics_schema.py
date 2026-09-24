@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+
+MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"   # YYYY-MM, e.g. 2026-09
 
 
 class AnalyticsBase(BaseModel):
@@ -38,7 +40,25 @@ class AnalyticsBase(BaseModel):
 
 
 class AnalyticsCreate(AnalyticsBase):
-    pass
+    credit_balance: float = Field(0.0, ge=0)
+    credit_used: float = Field(0.0, ge=0)
+
+    total_users: int = Field(0, ge=0)
+    active_users: int = Field(0, ge=0)
+    total_visits: int = Field(0, ge=0)
+
+    avg_session_duration: float = Field(0.0, ge=0)
+    response_time_avg: float = Field(0.0, ge=0)
+
+    error_count: int = Field(0, ge=0)
+
+    report_month: str = Field(..., pattern=MONTH_PATTERN)
+
+    @model_validator(mode="after")
+    def check_active_users(self):
+        if self.active_users > self.total_users:
+            raise ValueError("active_users cannot be greater than total_users")
+        return self
 
 
 class AnalyticsUpdate(BaseModel):
@@ -51,15 +71,15 @@ class AnalyticsUpdate(BaseModel):
         le=100
     )
 
-    credit_balance: Optional[float] = None
-    credit_used: Optional[float] = None
+    credit_balance: Optional[float] = Field(None, ge=0)
+    credit_used: Optional[float] = Field(None, ge=0)
 
-    total_users: Optional[int] = None
-    active_users: Optional[int] = None
-    total_visits: Optional[int] = None
+    total_users: Optional[int] = Field(None, ge=0)
+    active_users: Optional[int] = Field(None, ge=0)
+    total_visits: Optional[int] = Field(None, ge=0)
 
-    avg_session_duration: Optional[float] = None
-    response_time_avg: Optional[float] = None
+    avg_session_duration: Optional[float] = Field(None, ge=0)
+    response_time_avg: Optional[float] = Field(None, ge=0)
 
     uptime_percentage: Optional[float] = Field(
         None,
@@ -67,11 +87,21 @@ class AnalyticsUpdate(BaseModel):
         le=100
     )
 
-    error_count: Optional[int] = None
+    error_count: Optional[int] = Field(None, ge=0)
 
     metrics_json: Optional[Dict[str, Any]] = None
 
-    report_month: Optional[str] = None
+    report_month: Optional[str] = Field(None, pattern=MONTH_PATTERN)
+
+    @model_validator(mode="after")
+    def check_active_users(self):
+        if (
+            self.active_users is not None
+            and self.total_users is not None
+            and self.active_users > self.total_users
+        ):
+            raise ValueError("active_users cannot be greater than total_users")
+        return self
 
 
 class AnalyticsResponse(AnalyticsBase):
