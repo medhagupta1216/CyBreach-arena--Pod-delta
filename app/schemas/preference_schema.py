@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import  Literal, Optional
 
 from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
-
+Frequency = Literal["realtime", "hourly", "daily", "weekly"]
+TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"   # HH:MM, 00:00 to 23:59
 
 class PreferenceCreate(BaseModel):
     """Schema for creating user notification preferences."""
@@ -31,9 +32,10 @@ class PreferenceCreate(BaseModel):
     receive_critical_priority: bool = True
 
     # Quiet hours
-    quiet_hours_enabled: bool = False
-    quiet_hours_start: Optional[str] = None
-    quiet_hours_end: Optional[str] = None
+    quiet_hours_start: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
+    quiet_hours_end: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
+    ...
+    frequency: Frequency = "realtime"
 
     # Digest / frequency
     digest_enabled: bool = False
@@ -82,9 +84,10 @@ class PreferenceUpdate(BaseModel):
     receive_critical_priority: Optional[bool] = None
 
     # Quiet hours
-    quiet_hours_enabled: Optional[bool] = None
-    quiet_hours_start: Optional[str] = None
-    quiet_hours_end: Optional[str] = None
+    quiet_hours_start: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
+    quiet_hours_end: Optional[str] = Field(default=None, pattern=TIME_PATTERN)
+    ...
+    frequency: Optional[Frequency] = None
 
     # Digest / frequency
     digest_enabled: Optional[bool] = None
